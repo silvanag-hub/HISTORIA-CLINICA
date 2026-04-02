@@ -1,0 +1,1810 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Historia Clínica · Ficha Virtual</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --brand: #1a4a6b;
+    --brand-mid: #2d7d9a;
+    --brand-light: #e6f1f8;
+    --accent: #e07b54;
+    --bg: #f5f3ef;
+    --surface: #ffffff;
+    --border: rgba(0,0,0,0.10);
+    --border-strong: rgba(0,0,0,0.18);
+    --text: #1a1a1a;
+    --text-muted: #6b6b6b;
+    --text-hint: #999;
+    --success: #3b9c6b;
+    --danger: #c0392b;
+    --sidebar-w: 260px;
+    --font-head: 'Lora', Georgia, serif;
+    --font-body: 'DM Sans', sans-serif;
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+
+  html, body { height: 100%; font-family: var(--font-body); font-size: 16px; color: var(--text); background: var(--bg); }
+
+  /* ─── VIEWS ─── */
+  .view { display: none; height: 100vh; overflow: hidden; }
+  .view.active { display: flex; flex-direction: column; }
+
+  /* ══════════════════════════════════════
+     VISTA LISTA DE PACIENTES
+  ══════════════════════════════════════ */
+  #view-list { background: var(--bg); }
+
+  .list-header {
+    background: var(--brand);
+    padding: 28px 36px 24px;
+    flex-shrink: 0;
+  }
+
+  .list-header h1 {
+    font-family: var(--font-head);
+    font-size: 26px;
+    font-weight: 600;
+    color: #fff;
+    letter-spacing: -0.01em;
+  }
+
+  .list-header p {
+    font-size: 14px;
+    color: rgba(255,255,255,0.6);
+    margin-top: 4px;
+  }
+
+  .search-bar {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+  }
+
+  .search-bar input {
+    flex: 1;
+    font-family: var(--font-body);
+    font-size: 16px;
+    padding: 11px 16px;
+    border: none;
+    border-radius: var(--radius);
+    background: rgba(255,255,255,0.15);
+    color: #fff;
+    outline: none;
+    transition: background 0.2s;
+  }
+
+  .search-bar input::placeholder { color: rgba(255,255,255,0.5); }
+  .search-bar input:focus { background: rgba(255,255,255,0.22); }
+
+  .btn-new {
+    font-family: var(--font-body);
+    font-size: 15px;
+    font-weight: 600;
+    padding: 11px 22px;
+    border: none;
+    border-radius: var(--radius);
+    background: var(--accent);
+    color: #fff;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+
+  .btn-new:hover { opacity: 0.9; }
+  .btn-new:active { transform: scale(0.97); }
+
+  .patient-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 28px 36px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+    align-content: start;
+  }
+
+  .patient-card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    padding: 20px 22px;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+    position: relative;
+  }
+
+  .patient-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.09);
+    border-color: var(--brand-mid);
+  }
+
+  .patient-card-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 12px;
+  }
+
+  .avatar {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: var(--brand-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-head);
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--brand);
+    flex-shrink: 0;
+  }
+
+  .patient-card-name {
+    font-family: var(--font-head);
+    font-size: 17px;
+    font-weight: 500;
+    color: var(--text);
+    line-height: 1.2;
+  }
+
+  .patient-card-sub {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  .patient-card-meta {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .meta-tag {
+    font-size: 12px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: var(--brand-light);
+    color: var(--brand);
+    font-weight: 500;
+  }
+
+  .meta-tag.gray { background: #f0ede8; color: var(--text-muted); }
+
+  .card-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: #f0ede8;
+    border-radius: 0 0 var(--radius) var(--radius);
+    overflow: hidden;
+  }
+
+  .card-progress-fill {
+    height: 100%;
+    background: var(--brand-mid);
+    transition: width 0.4s;
+  }
+
+  .card-actions {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    display: flex;
+    gap: 6px;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+
+  .patient-card:hover .card-actions { opacity: 1; }
+
+  .icon-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    color: var(--text-muted);
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .icon-btn:hover { background: #fde8e8; color: var(--danger); border-color: #fbd5d5; }
+
+  .empty-state {
+    grid-column: 1/-1;
+    text-align: center;
+    padding: 80px 20px;
+    color: var(--text-muted);
+  }
+
+  .empty-state .icon { font-size: 48px; margin-bottom: 16px; }
+  .empty-state h3 { font-family: var(--font-head); font-size: 20px; font-weight: 500; color: var(--text); margin-bottom: 8px; }
+  .empty-state p { font-size: 15px; }
+
+  /* ══════════════════════════════════════
+     VISTA FICHA / EDITOR
+  ══════════════════════════════════════ */
+  #view-editor { display: none; flex-direction: row; height: 100vh; }
+  #view-editor.active { display: flex; }
+
+  /* Sidebar */
+  .sidebar {
+    width: var(--sidebar-w);
+    background: var(--brand);
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .sidebar-logo {
+    padding: 22px 20px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    cursor: pointer;
+  }
+
+  .sidebar-logo h2 {
+    font-family: var(--font-head);
+    font-size: 16px;
+    font-weight: 500;
+    color: #fff;
+    line-height: 1.3;
+  }
+
+  .sidebar-logo p {
+    font-size: 12px;
+    color: rgba(255,255,255,0.5);
+    margin-top: 3px;
+  }
+
+  .patient-badge {
+    margin: 14px 16px;
+    padding: 12px 14px;
+    background: rgba(255,255,255,0.1);
+    border-radius: var(--radius-sm);
+  }
+
+  .patient-badge-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: #fff;
+    line-height: 1.2;
+  }
+
+  .patient-badge-age {
+    font-size: 12px;
+    color: rgba(255,255,255,0.55);
+    margin-top: 3px;
+  }
+
+  .nav {
+    flex: 1;
+    overflow-y: auto;
+    padding: 6px 0;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 20px;
+    cursor: pointer;
+    font-size: 14px;
+    color: rgba(255,255,255,0.65);
+    transition: background 0.15s, color 0.15s;
+    border-left: 3px solid transparent;
+    line-height: 1.3;
+  }
+
+  .nav-item:hover { background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.9); }
+
+  .nav-item.active {
+    background: rgba(255,255,255,0.13);
+    color: #fff;
+    border-left-color: #7fc4e0;
+    font-weight: 500;
+  }
+
+  .nav-item.done .nav-num { color: #7fcc99; }
+
+  .nav-num {
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.35);
+    min-width: 20px;
+    padding-top: 1px;
+    letter-spacing: 0.03em;
+  }
+
+  .progress-foot {
+    padding: 14px 20px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+  }
+
+  .progress-label {
+    font-size: 12px;
+    color: rgba(255,255,255,0.5);
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+
+  .progress-track {
+    height: 4px;
+    background: rgba(255,255,255,0.12);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: #7fc4e0;
+    border-radius: 2px;
+    transition: width 0.4s;
+  }
+
+  /* Main content */
+  .main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg);
+    overflow: hidden;
+  }
+
+  .top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 32px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .top-bar-left { display: flex; flex-direction: column; }
+
+  .section-title {
+    font-family: var(--font-head);
+    font-size: 20px;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  .section-pos {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  .top-actions { display: flex; gap: 10px; align-items: center; }
+
+  .save-status {
+    font-size: 13px;
+    color: var(--text-hint);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .save-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--text-hint);
+    transition: background 0.3s;
+  }
+
+  .save-dot.saved { background: var(--success); }
+  .save-dot.unsaved { background: var(--accent); }
+
+  .btn-back {
+    font-family: var(--font-body);
+    font-size: 14px;
+    padding: 8px 16px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .btn-back:hover { background: #f0ede8; }
+
+  .btn-save {
+    font-family: var(--font-body);
+    font-size: 14px;
+    font-weight: 600;
+    padding: 8px 20px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: var(--brand);
+    color: #fff;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+
+  .btn-save:hover { opacity: 0.88; }
+
+  /* Content area */
+  .content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 30px 36px;
+  }
+
+  .section-page { display: none; animation: fadeIn 0.2s ease; }
+  .section-page.active { display: block; }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+  .hint {
+    font-size: 15px;
+    color: var(--text-muted);
+    margin-bottom: 24px;
+    padding: 14px 18px;
+    background: var(--surface);
+    border-left: 3px solid var(--brand-mid);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    line-height: 1.6;
+  }
+
+  .field-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    margin-bottom: 18px;
+  }
+
+  .field-group.full { grid-template-columns: 1fr; }
+  .field-group.triple { grid-template-columns: 1fr 1fr 1fr; }
+
+  .field { display: flex; flex-direction: column; gap: 7px; }
+
+  .field label {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .field input, .field select, .field textarea {
+    font-family: var(--font-body);
+    font-size: 16px;
+    padding: 11px 14px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    width: 100%;
+  }
+
+  .field input:focus, .field select:focus, .field textarea:focus {
+    border-color: var(--brand-mid);
+    box-shadow: 0 0 0 3px rgba(45,125,154,0.12);
+  }
+
+  .field textarea { resize: vertical; min-height: 100px; line-height: 1.6; }
+
+  .section-sep {
+    font-family: var(--font-head);
+    font-size: 15px;
+    font-weight: 500;
+    font-style: italic;
+    color: var(--text-muted);
+    margin: 26px 0 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .checkbox-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 4px;
+  }
+
+  .chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    padding: 7px 14px;
+    border: 1px solid var(--border-strong);
+    border-radius: 20px;
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: all 0.15s;
+    user-select: none;
+    background: var(--surface);
+  }
+
+  .chip:hover { border-color: var(--brand-mid); color: var(--brand); }
+  .chip.selected { background: var(--brand-light); border-color: var(--brand); color: var(--brand); font-weight: 600; }
+  .chip input { display: none; }
+
+  .rating-section { display: flex; flex-direction: column; gap: 14px; }
+
+  .rating-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--surface);
+    padding: 12px 16px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+  }
+
+  .rating-label { font-size: 15px; color: var(--text); min-width: 170px; }
+
+  .rating-btns { display: flex; gap: 6px; }
+
+  .rating-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: 1px solid var(--border-strong);
+    background: var(--bg);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: all 0.15s;
+    font-family: var(--font-body);
+  }
+
+  .rating-btn:hover { background: var(--brand-light); border-color: var(--brand); color: var(--brand); }
+  .rating-btn.selected { background: var(--brand); border-color: var(--brand); color: #fff; }
+
+  .rating-end { font-size: 13px; color: var(--text-hint); min-width: 100px; }
+
+  .systems-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+
+  .system-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+  }
+
+  .system-card label {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--text-muted);
+    display: block;
+    margin-bottom: 7px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .system-card textarea {
+    width: 100%;
+    font-family: var(--font-body);
+    font-size: 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+    background: var(--bg);
+    color: var(--text);
+    resize: vertical;
+    min-height: 70px;
+    outline: none;
+    line-height: 1.5;
+    transition: border-color 0.15s;
+  }
+
+  .system-card textarea:focus { border-color: var(--brand-mid); }
+
+  /* Bottom nav */
+  .bottom-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 36px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .btn-nav {
+    font-family: var(--font-body);
+    font-size: 15px;
+    font-weight: 500;
+    padding: 10px 24px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong);
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .btn-nav:hover { background: #f0ede8; }
+  .btn-nav:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  .btn-nav.primary {
+    background: var(--brand);
+    color: #fff;
+    border-color: var(--brand);
+  }
+
+  .btn-nav.primary:hover { background: var(--brand-mid); border-color: var(--brand-mid); }
+
+  .dots { display: flex; gap: 6px; align-items: center; }
+
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--border-strong);
+    transition: background 0.3s;
+  }
+
+  .dot.done { background: var(--success); }
+  .dot.current { background: var(--brand-mid); width: 20px; border-radius: 4px; }
+
+  /* ══ MODAL ══ */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 32px 36px;
+    width: 420px;
+    max-width: 95vw;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  }
+
+  .modal h3 {
+    font-family: var(--font-head);
+    font-size: 20px;
+    font-weight: 500;
+    margin-bottom: 18px;
+  }
+
+  .modal .field { margin-bottom: 14px; }
+
+  .modal-actions { display: flex; gap: 10px; margin-top: 24px; justify-content: flex-end; }
+
+  .btn-cancel {
+    font-family: var(--font-body);
+    font-size: 15px;
+    padding: 10px 20px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+  }
+
+  .btn-confirm {
+    font-family: var(--font-body);
+    font-size: 15px;
+    font-weight: 600;
+    padding: 10px 24px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: var(--brand);
+    color: #fff;
+    cursor: pointer;
+  }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.18); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- ══════ VISTA LISTA ══════ -->
+<div class="view active" id="view-list">
+  <div class="list-header">
+    <h1>Historia Clínica · Ficha Virtual</h1>
+    <p>Sistema de registro psiquiátrico</p>
+    <div class="search-bar">
+      <input type="text" id="search-input" placeholder="Buscar paciente por nombre..." oninput="filterPatients()">
+      <button class="btn-new" onclick="openNewPatient()">+ Nuevo paciente</button>
+    </div>
+  </div>
+  <div class="patient-list" id="patient-list"></div>
+</div>
+
+<!-- ══════ VISTA EDITOR ══════ -->
+<div class="view" id="view-editor">
+  <aside class="sidebar">
+    <div class="sidebar-logo" onclick="goToList()">
+      <h2>← Historia Clínica</h2>
+      <p>Volver a la lista</p>
+    </div>
+    <div class="patient-badge">
+      <div class="patient-badge-name" id="badge-name">—</div>
+      <div class="patient-badge-age" id="badge-age">—</div>
+    </div>
+    <nav class="nav" id="nav">
+      <div class="nav-item active" data-s="0" onclick="gotoSection(0)"><span class="nav-num">01</span>Motivo de consulta</div>
+      <div class="nav-item" data-s="1" onclick="gotoSection(1)"><span class="nav-num">02</span>Datos filiatorios</div>
+      <div class="nav-item" data-s="2" onclick="gotoSection(2)"><span class="nav-num">03</span>Antecedentes familiares</div>
+      <div class="nav-item" data-s="3" onclick="gotoSection(3)"><span class="nav-num">04</span>Antecedentes personales</div>
+      <div class="nav-item" data-s="4" onclick="gotoSection(4)"><span class="nav-num">05</span>Personalidad premórbida</div>
+      <div class="nav-item" data-s="5" onclick="gotoSection(5)"><span class="nav-num">06</span>Adaptación previa</div>
+      <div class="nav-item" data-s="6" onclick="gotoSection(6)"><span class="nav-num">07</span>Antecedentes patológicos</div>
+      <div class="nav-item" data-s="7" onclick="gotoSection(7)"><span class="nav-num">08</span>Historia condición actual</div>
+      <div class="nav-item" data-s="8" onclick="gotoSection(8)"><span class="nav-num">09</span>Interpretación</div>
+      <div class="nav-item" data-s="9" onclick="gotoSection(9)"><span class="nav-num">10</span>Plan de tratamiento</div>
+    </nav>
+    <div class="progress-foot">
+      <div class="progress-label"><span>Completado</span><span id="pct">0%</span></div>
+      <div class="progress-track"><div class="progress-fill" id="pfill" style="width:0%"></div></div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="top-bar">
+      <div class="top-bar-left">
+        <div class="section-title" id="section-title">Motivo de consulta</div>
+        <div class="section-pos" id="section-pos">Sección 1 de 10</div>
+      </div>
+      <div class="top-actions">
+        <div class="save-status"><div class="save-dot" id="save-dot"></div><span id="save-label">Sin cambios</span></div>
+        <button class="btn-back" onclick="goToList()">Lista</button>
+        <button class="btn-save" onclick="savePatient()">Guardar</button>
+      </div>
+    </div>
+
+    <div class="content" id="content">
+
+      <!-- SEC 1: Motivo de consulta -->
+      <div class="section-page active" id="sec0">
+        <div class="hint">Registrar de forma precisa y, en la medida de lo posible, textual, la razón por la cual el consultante solicita atención. Incluir los síntomas principales que refiere.</div>
+        <div class="field-group full">
+          <div class="field">
+            <label>Motivo principal (en palabras del consultante)</label>
+            <textarea name="motivo_consulta" placeholder="«Vengo porque...»" rows="4"></textarea>
+          </div>
+        </div>
+        <div class="field-group full">
+          <div class="field">
+            <label>Síntomas principales referidos</label>
+            <textarea name="sintomas_principales" placeholder="Enumerar síntomas reportados por el consultante..." rows="4"></textarea>
+          </div>
+        </div>
+        <div class="field-group">
+          <div class="field">
+            <label>Fecha de consulta</label>
+            <input type="date" name="fecha_consulta">
+          </div>
+          <div class="field">
+            <label>Tipo de consulta</label>
+            <select name="tipo_consulta">
+              <option value="">Seleccionar...</option>
+              <option>Consulta inicial</option>
+              <option>Interconsulta</option>
+              <option>Urgencia</option>
+              <option>Control</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- SEC 2: Datos filiatorios -->
+      <div class="section-page" id="sec1">
+        <div class="hint">Datos personales básicos y sociodemográficos del consultante.</div>
+        <div class="field-group">
+          <div class="field">
+            <label>Nombre completo</label>
+            <input type="text" name="nombre" placeholder="Apellido, Nombre">
+          </div>
+          <div class="field">
+            <label>Fecha de nacimiento</label>
+            <input type="date" name="fecha_nacimiento">
+          </div>
+        </div>
+        <div class="field-group triple">
+          <div class="field">
+            <label>Edad</label>
+            <input type="number" name="edad" placeholder="años">
+          </div>
+          <div class="field">
+            <label>Sexo biológico</label>
+            <select name="sexo">
+              <option value="">Seleccionar...</option>
+              <option>Femenino</option>
+              <option>Masculino</option>
+              <option>Intersex</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Estado civil</label>
+            <select name="estado_civil">
+              <option value="">Seleccionar...</option>
+              <option>Soltero/a</option>
+              <option>Casado/a</option>
+              <option>Conviviente</option>
+              <option>Divorciado/a</option>
+              <option>Viudo/a</option>
+              <option>Separado/a</option>
+            </select>
+          </div>
+        </div>
+        <div class="field-group">
+          <div class="field">
+            <label>Nivel educativo</label>
+            <select name="nivel_educativo">
+              <option value="">Seleccionar...</option>
+              <option>Sin estudios formales</option>
+              <option>Primario incompleto</option>
+              <option>Primario completo</option>
+              <option>Secundario incompleto</option>
+              <option>Secundario completo</option>
+              <option>Terciario/Universitario incompleto</option>
+              <option>Terciario/Universitario completo</option>
+              <option>Posgrado</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Situación laboral</label>
+            <select name="situacion_laboral">
+              <option value="">Seleccionar...</option>
+              <option>Empleado/a en relación de dependencia</option>
+              <option>Autónomo/a</option>
+              <option>Desempleado/a</option>
+              <option>Jubilado/a / Pensionado/a</option>
+              <option>Estudiante</option>
+              <option>Ama/o de casa</option>
+              <option>Incapacitado/a laboralmente</option>
+            </select>
+          </div>
+        </div>
+        <div class="field-group">
+          <div class="field">
+            <label>Ocupación</label>
+            <input type="text" name="ocupacion" placeholder="Profesión u ocupación actual">
+          </div>
+          <div class="field">
+            <label>Lugar de residencia</label>
+            <input type="text" name="residencia" placeholder="Ciudad, provincia">
+          </div>
+        </div>
+        <div class="field-group full">
+          <div class="field">
+            <label>Composición familiar</label>
+            <textarea name="composicion_familiar" placeholder="Con quién convive, estructura del hogar..." rows="3"></textarea>
+          </div>
+        </div>
+        <div class="field-group full">
+          <div class="field">
+            <label>Otros datos sociodemográficos relevantes</label>
+            <textarea name="otros_datos" placeholder="Religión, etnia, condición migratoria, etc." rows="2"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- SEC 3: Antecedentes familiares -->
+      <div class="section-page" id="sec2">
+        <div class="hint">Indagar sobre patologías psiquiátricas en familiares, medicaciones, IAE, hábitos tóxicos y la percepción afectiva del consultante sobre sus vínculos.</div>
+        <div class="section-sep">Antecedentes médico-psiquiátricos familiares</div>
+        <div class="field-group full">
+          <div class="field">
+            <label>Patologías psiquiátricas en familiares</label>
+            <textarea name="psiq_familiares" placeholder="Depresión, ansiedad, psicosis, TOC, etc. Indicar parentesco..." rows="3"></textarea>
+          </div>
+        </div>
+        <div class="field-group full">
+          <div class="field">
+            <label>Uso de psicofármacos en familiares</label>
+            <textarea name="psico_familiares" placeholder="Medicaciones conocidas, parentesco..." rows="2"></textarea>
+          </div>
+        </div>
+        <div class="field-group full">
+          <div class="field">
+            <label>Intentos de autoeliminación (IAE) en familia</label>
+            <textarea name="iae_familiares" placeholder="Registrar intentos o suicidios consumados en familiares..." rows="2"></textarea>
+          </div>
+        </div>
+        <div class="field-group full">
+          <div class="field">
+            <label>Enfermedades somáticas de interés familiar</label>
+            <textarea name="somaticas_familiares" placeholder="Enfermedades hereditarias o relevantes..." rows="2"></textarea>
+          </div>
+        </div>
+        <div class="section-sep">Hábitos y percepción vincular</div>
+        <div class="field-group full">
+          <div class="field">
+            <label>Hábitos tóxicos en entorno familiar</label>
+            <div class="checkbox-group" id="grp-toxic-fam">
+              <label class="chip"><input type="checkbox" name="toxic_fam[]" value="Alcohol">Alcohol</label>
+              <label class="chip"><input type="checkbox" name="toxic_fam[]" value="Tabaco">Tabaco</label>
+              <label class="chip"><input type="checkbox" name="toxic_fam[]" value="Cannabis">Cannabis</label>
+              <label class="chip"><input type="checkbox" name="toxic_fam[]" value="Cocaína">Cocaína</label>
+              <label class="chip"><input type="checkbox" name="toxic_fam[]" value="Pasta base">Pasta base</label>
+              <label class="chip"><input type="checkbox" name="toxic_fam[]" value="Opioides">Opioides</label>
+              <label class="chip"><input type="checkbox" name="toxic_fam[]" value="Benzodiacepinas">Benzodiacepinas</label>
+              <label class="chip"><input type="checkbox" name="toxic_fam[]" value="Otras sustancias">Otras sustancias</label>
+              <label class="chip"><input type="checkbox" name="toxic_fam[]" value="Sin datos">Sin datos</label>
+            </div>
+          </div>
+        </div>
+        <div class="field-group full">
+          <div class="field">
+            <label>Percepción afectiva de vínculos familiares</label>
+            <textarea name="percepcion_vinculos" placeholder="Cómo describe el consultante su relación con familiares cercanos..." rows="4"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- SEC 4: Antecedentes personales -->
+      <div class="section-page" id="sec3">
+        <div class="hint">Recorrer etapas vitales: infancia, adolescencia, adultez. Incluir rendimiento escolar, sueño, laboral, social, identidad sexual y conductas basales.</div>
+        <div class="section-sep">Infancia</div>
+        <div class="field-group full">
+          <div class="field">
+            <label>Desarrollo temprano e infancia</label>
+            <textarea name="infancia" placeholder="Hitos del desarrollo, entorno familiar, relaciones con pares, temores, rendimiento escolar..." rows="3"></textarea>
+          </div>
+        </div>
+        <div class="section-sep">Adolescencia</div>
+        <div class="field-group full">
+          <div class="field">
+            <label>Adolescencia</label>
+            <textarea name="adolescencia" placeholder="Cambios, vínculos, rendimiento académico, experiencias significativas..." rows="3"></textarea>
+          </div>
+        </div>
+        <div class="section-sep">Adultez</div>
+        <div class="field-group full">
+          <div class="field">
+            <label>Edad adulta</label>
+            <textarea name="adultez" placeholder="Experiencias laborales, vínculos afectivos, logros, dificultades..." rows="3"></textarea>
+          </div>
+        </div>
+        <div class="field-group full">
+          <div class="field">
+            <label>Antecedentes obstétricos (si corresponde)</label>
+            <textarea name="obstetricos" placeholder="Embarazos, partos, complicaciones, etc." rows="2"></textarea>
+          </div>
+        </div>
+        <div class="section-sep">Identidad, hábitos y conductas</div>
+        <div class="field-group">
+          <div class="field">
+            <label>Identidad de género y orientación sexual</label>
+            <textarea name="identidad" placeholder="En los términos que el consultante elija expresar..." rows="2"></textarea>
+          </div>
+          <div class="field">
+            <label>Vínculos sociales</label>
+            <textarea name="vinculos_sociales" placeholder="Redes de apoyo, amistades, aislamiento..." rows="2"></textarea>
+          </div>
+        </div>
+        <div class="field-group">
+          <div class="field">
+            <label>Hábitos tóxicos propios</label>
+            <div class="checkbox-group" id="grp-toxic-prop">
+              <label class="chip"><input type="checkbox" name="toxic_prop[]" value="Alcohol">Alcohol</label>
+              <label class="chip"><input type="checkbox" name="toxic_prop[]" value="Tabaco">Tabaco</label>
+              <label class="chip"><input type="checkbox" name="toxic_prop[]" value="Cannabis">Cannabis</label>
+              <label class="chip"><input type="checkbox" name="toxic_prop[]" value="Cocaína">Cocaína</label>
+              <label class="chip"><input type="checkbox" name="toxic_prop[]" value="Pasta base">Pasta base</label>
+              <label class="chip"><input type="checkbox" name="toxic_prop[]" value="Opioides">Opioides</label>
+              <label class="chip"><input type="checkbox" name="toxic_prop[]" value="Benzodiacepinas">Benzodiacepinas</label>
+              <label class="chip"><input type="checkbox" name="toxic_prop[]" value="Otros">Otros</label>
+              <label class="chip"><input type="checkbox" name="toxic_prop[]" value="Ninguno">Ninguno</label>
+            </div>
+          </div>
+          <div class="field">
+            <label>Modificaciones conductas basales</label>
+            <div class="checkbox-group" id="grp-cond-bas">
+              <label class="chip"><input type="checkbox" name="cond_bas[]" value="Alimentación">Alimentación</label>
+              <label class="chip"><input type="checkbox" name="cond_bas[]" value="Sueño">Sueño</label>
+              <label class="chip"><input type="checkbox" name="cond_bas[]" value="Descanso">Descanso</label>
+              <label class="chip"><input type="checkbox" name="cond_bas[]" value="Higiene personal">Higiene personal</label>
+              <label class="chip"><input type="checkbox" name="cond_bas[]" value="Higiene del entorno">Higiene del entorno</label>
+            </div>
+          </div>
+        </div>
+        <div class="field-group full">
+          <div class="field">
+            <label>Observaciones adicionales</label>
+            <textarea name="obs_personales" placeholder="Otros aspectos relevantes del recorrido vital..." rows="2"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- SEC 5: Personalidad premórbida -->
+      <div class="section-page" id="sec4">
+        <div class="hint">Solicitar al consultante que describa sus características de personalidad antes del inicio de la dificultad actual.</div>
+        <div class="field-group full">
+          <div class="field">
+            <label>Descripción propia (en palabras del consultante)</label>
+            <textarea name="desc_propia" placeholder="«Antes de todo esto, yo era una persona que...»" rows="3"></textarea>
+          </div>
+        </div>
+        <div class="section-sep">Rasgos de personalidad premórbida</div>
+        <div class="rating-section">
+          <div class="rating-row">
+            <span class="rating-label">Extroversión</span>
+            <div class="rating-btns" id="r-extro">
+              <button class="rating-btn" data-g="r-extro" data-v="1" onclick="selectRating(this)">1</button>
+              <button class="rating-btn" data-g="r-extro" data-v="2" onclick="selectRating(this)">2</button>
+              <button class="rating-btn" data-g="r-extro" data-v="3" onclick="selectRating(this)">3</button>
+              <button class="rating-btn" data-g="r-extro" data-v="4" onclick="selectRating(this)">4</button>
+              <button class="rating-btn" data-g="r-extro" data-v="5" onclick="selectRating(this)">5</button>
+            </div>
+            <span class="rating-end">→ Introversión</span>
+          </div>
+          <div class="rating-row">
+            <span class="rating-label">Optimismo</span>
+            <div class="rating-btns" id="r-optim">
+              <button class="rating-btn" data-g="r-optim" data-v="1" onclick="selectRating(this)">1</button>
+              <button class="rating-btn" data-g="r-optim" data-v="2" onclick="selectRating(this)">2</button>
+              <button class="rating-btn" data-g="r-optim" data-v="3" onclick="selectRating(this)">3</button>
+              <button class="rating-btn" data-g="r-optim" data-v="4" onclick="selectRating(this)">4</button>
+              <button class="rating-btn" data-g="r-optim" data-v="5" onclick="selectRating(this)">5</button>
+            </div>
+            <span class="rating-end">→ Pesimismo</span>
+          </div>
+          <div class="rating-row">
+            <span class="rating-label">Autonomía</span>
+            <div class="rating-btns" id="r-auto">
+              <button class="rating-btn" data-g="r-auto" data-v="1" onclick="selectRating(this)">1</button>
+              <button class="rating-btn" data-g="r-auto" data-v="2" onclick="selectRating(this)">2</button>
+              <button class="rating-btn" data-g="r-auto" data-v="3" onclick="selectRating(this)">3</button>
+              <button class="rating-btn" data-g="r-auto" data-v="4" onclick="selectRating(this)">4</button>
+              <button class="rating-btn" data-g="r-auto" data-v="5" onclick="selectRating(this)">5</button>
+            </div>
+            <span class="rating-end">→ Dependencia</span>
+          </div>
+          <div class="rating-row">
+            <span class="rating-label">Autoestima</span>
+            <div class="rating-btns" id="r-ae">
+              <button class="rating-btn" data-g="r-ae" data-v="1" onclick="selectRating(this)">1</button>
+              <button class="rating-btn" data-g="r-ae" data-v="2" onclick="selectRating(this)">2</button>
+              <button class="rating-btn" data-g="r-ae" data-v="3" onclick="selectRating(this)">3</button>
+              <button class="rating-btn" data-g="r-ae" data-v="4" onclick="selectRating(this)">4</button>
+              <button class="rating-btn" data-g="r-ae" data-v="5" onclick="selectRating(this)">5</button>
+            </div>
+            <span class="rating-end">→ Baja autoestima</span>
+          </div>
+          <div class="rating-row">
+            <span class="rating-label">Tolerancia a la frustración</span>
+            <div class="rating-btns" id="r-tol">
+              <button class="rating-btn" data-g="r-tol" data-v="1" onclick="selectRating(this)">1</button>
+              <button class="rating-btn" data-g="r-tol" data-v="2" onclick="selectRating(this)">2</button>
+              <button class="rating-btn" data-g="r-tol" data-v="3" onclick="selectRating(this)">3</button>
+              <button class="rating-btn" data-g="r-tol" data-v="4" onclick="selectRating(this)">4</button>
+              <button class="rating-btn" data-g="r-tol" data-v="5" onclick="selectRating(this)">5</button>
+            </div>
+            <span class="rating-end">→ Baja tolerancia</span>
+          </div>
+        </div>
+        <div class="section-sep" style="margin-top:22px;">Rasgos adicionales</div>
+        <div class="checkbox-group" id="grp-rasgos">
+          <label class="chip"><input type="checkbox" name="rasgos[]" value="Perfeccionismo">Perfeccionismo</label>
+          <label class="chip"><input type="checkbox" name="rasgos[]" value="Pasividad">Pasividad</label>
+          <label class="chip"><input type="checkbox" name="rasgos[]" value="Hipocondría">Hipocondría</label>
+          <label class="chip"><input type="checkbox" name="rasgos[]" value="Impulsividad">Impulsividad</label>
+          <label class="chip"><input type="checkbox" name="rasgos[]" value="Rigidez">Rigidez</label>
+          <label class="chip"><input type="checkbox" name="rasgos[]" value="Inseguridad">Inseguridad</label>
+          <label class="chip"><input type="checkbox" name="rasgos[]" value="Labilidad emocional">Labilidad emocional</label>
+          <label class="chip"><input type="checkbox" name="rasgos[]" value="Desconfianza">Desconfianza</label>
+        </div>
+        <div class="field-group full" style="margin-top:18px;">
+          <div class="field">
+            <label>Comentarios sobre personalidad previa</label>
+            <textarea name="coment_personalidad" placeholder="Observaciones clínicas sobre el autoconcepto..." rows="3"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- SEC 6: Adaptación previa -->
+      <div class="section-page" id="sec5">
+        <div class="hint">Evaluar cómo fue la adaptación del consultante durante el año previo al inicio de los síntomas para conocer su nivel de funcionamiento anterior.</div>
+        <div class="field-group">
+          <div class="field">
+            <label>Período de referencia</label>
+            <input type="text" name="periodo_ref" placeholder="Ej: enero 2023 – enero 2024">
+          </div>
+          <div class="field">
+            <label>Nivel de funcionamiento global (GAF)</label>
+            <input type="number" name="gaf" min="1" max="100" placeholder="1–100">
+          </div>
+        </div>
+        <div class="field-group">
+          <div class="field">
+            <label>Adaptación laboral / académica</label>
+            <select name="adapt_laboral">
+              <option value="">Seleccionar...</option>
+              <option>Excelente</option><option>Buena</option><option>Regular</option><option>Mala</option><option>No aplica</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Adaptación social</label>
+            <select name="adapt_social">
+              <option value="">Seleccionar...</option>
+              <option>Excelente</option><option>Buena</option><option>Regular</option><option>Mala</option>
+            </select>
+          </div>
+        </div>
+        <div class="field-group">
+          <div class="field">
+            <label>Adaptación familiar</label>
+            <select name="adapt_familiar">
+              <option value="">Seleccionar...</option>
+              <option>Excelente</option><option>Buena</option><option>Regular</option><option>Mala</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Adaptación de pareja (si aplica)</label>
+            <select name="adapt_pareja">
+              <option value="">Seleccionar...</option>
+              <option>Excelente</option><option>Buena</option><option>Regular</option><option>Mala</option><option>No aplica</option>
+            </select>
+          </div>
+        </div>
+        <div class="field-group full">
+          <div class="field">
+            <label>Descripción narrativa de la adaptación previa</label>
+            <textarea name="desc_adaptacion" placeholder="Cómo era el funcionamiento cotidiano, rutinas, relaciones, trabajo..." rows="5"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- SEC 7: Antecedentes patológicos -->
+      <div class="section-page" id="sec6">
+        <div class="hint">Historial médico psiquiátrico y no psiquiátrico: enfermedades, hospitalizaciones, alergias, tratamientos habituales y actuales.</div>
+        <div class="section-sep">Antecedentes psiquiátricos</div>
+        <div class="field-group full">
+          <div class="field">
+            <label>Diagnósticos psiquiátricos previos</label>
+            <textarea name="diag_previos" placeholder="Diagnósticos, fechas aproximadas, profesionales tratantes..." rows="3"></textarea>
+          </div>
+        </div>
+        <div class="field-group full">
+          <div class="field">
+            <label>Internaciones psiquiátricas</label>
+            <textarea name="internaciones_psiq" placeholder="Motivo, institución, duración, año..." rows="2"></textarea>
+          </div>
+        </div>
+        <div class="field-group full">
+          <div class="field">
+            <label>Tratamientos psicoterapéuticos previos</label>
+            <textarea name="tto_previo" placeholder="Tipo de terapia, duración, resultados percibidos..." rows="2"></textarea>
+          </div>
+        </div>
+        <div class="section-sep">Antecedentes médicos generales</div>
+        <div class="field-group full">
+          <div class="field">
+            <label>Enfermedades somáticas</label>
+            <textarea name="enf_somaticas" placeholder="Patologías crónicas o agudas relevantes, cirugías..." rows="3"></textarea>
+          </div>
+        </div>
+        <div class="field-group">
+          <div class="field">
+            <label>Alergias documentadas</label>
+            <textarea name="alergias" placeholder="Alergias a medicamentos, alimentos, etc." rows="2"></textarea>
+          </div>
+          <div class="field">
+            <label>Medicación actual</label>
+            <textarea name="medicacion_actual" placeholder="Fármaco, dosis, frecuencia, prescriptor..." rows="2"></textarea>
+          </div>
+        </div>
+        <div class="field-group full">
+          <div class="field">
+            <label>Información aportada por acompañantes / tutores / familiares</label>
+            <textarea name="info_acompanantes" placeholder="Registrar si se cuenta con autorización del consultante..." rows="2"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- SEC 8: Historia condición actual -->
+      <div class="section-page" id="sec7">
+        <div class="hint">Factores desencadenantes, síntomas y signos, consecuencias, tratamientos e ingresos. Incluye registro físico por sistemas.</div>
+        <div class="field-group full">
+          <div class="field">
+            <label>Factores desencadenantes</label>
+            <textarea name="factores_desencad" placeholder="Eventos vitales, estresores, pérdidas, cambios que precedieron al cuadro..." rows="3"></textarea>
+          </div>
+        </div>
+        <div class="field-group">
+          <div class="field">
+            <label>Fecha aproximada de inicio</label>
+            <input type="date" name="fecha_inicio">
+          </div>
+          <div class="field">
+            <label>Curso</label>
+            <select name="curso">
+              <option value="">Seleccionar...</option>
+              <option>Agudo</option><option>Subagudo</option><option>Crónico</option><option>Episódico</option><option>Recurrente</option>
+            </select>
+          </div>
+        </div>
+        <div class="field-group full">
+          <div class="field">
+            <label>Síntomas y signos presentes</label>
+            <textarea name="sintomas_signos" placeholder="Descripción detallada de la sintomatología actual..." rows="4"></textarea>
+          </div>
+        </div>
+        <div class="field-group full">
+          <div class="field">
+            <label>Consecuencias funcionales</label>
+            <textarea name="consecuencias" placeholder="Impacto en vida laboral, social, familiar, cuidado personal..." rows="2"></textarea>
+          </div>
+        </div>
+        <div class="field-group full">
+          <div class="field">
+            <label>Tratamientos realizados e ingresos hospitalarios</label>
+            <textarea name="tto_ingresos" placeholder="Tratamientos farmacológicos, psicoterapéuticos, hospitalizaciones del cuadro actual..." rows="2"></textarea>
+          </div>
+        </div>
+        <div class="section-sep">Registro físico por sistemas</div>
+        <div class="systems-grid">
+          <div class="system-card"><label>Nervioso</label><textarea name="sys_nervioso" placeholder="..."></textarea></div>
+          <div class="system-card"><label>Cardiovascular</label><textarea name="sys_cardio" placeholder="..."></textarea></div>
+          <div class="system-card"><label>Respiratorio</label><textarea name="sys_respira" placeholder="..."></textarea></div>
+          <div class="system-card"><label>Digestivo</label><textarea name="sys_digestivo" placeholder="..."></textarea></div>
+          <div class="system-card"><label>Urinario</label><textarea name="sys_urinario" placeholder="..."></textarea></div>
+          <div class="system-card"><label>Endocrino</label><textarea name="sys_endocrino" placeholder="..."></textarea></div>
+          <div class="system-card"><label>Muscular</label><textarea name="sys_muscular" placeholder="..."></textarea></div>
+          <div class="system-card"><label>Esquelético</label><textarea name="sys_esqueletico" placeholder="..."></textarea></div>
+          <div class="system-card"><label>Tegumentario</label><textarea name="sys_tegum" placeholder="..."></textarea></div>
+          <div class="system-card"><label>Linfático / Inmune</label><textarea name="sys_linfatico" placeholder="..."></textarea></div>
+          <div class="system-card"><label>Reproductor</label><textarea name="sys_reproductor" placeholder="..."></textarea></div>
+        </div>
+      </div>
+
+      <!-- SEC 9: Interpretación -->
+      <div class="section-page" id="sec8">
+        <div class="hint">Integrar y analizar la información recogida. Destacar hallazgos relevantes y formular hipótesis preliminares sobre el caso.</div>
+        <div class="field-group full">
+          <div class="field">
+            <label>Síntesis integradora</label>
+            <textarea name="sintesis" placeholder="Resumen de los datos más significativos recogidos en la entrevista..." rows="4"></textarea>
+          </div>
+        </div>
+        <div class="field-group full">
+          <div class="field">
+            <label>Hallazgos relevantes</label>
+            <textarea name="hallazgos" placeholder="Factores de riesgo, factores protectores, patrones identificados..." rows="3"></textarea>
+          </div>
+        </div>
+        <div class="field-group full">
+          <div class="field">
+            <label>Hipótesis diagnósticas preliminares</label>
+            <textarea name="hipotesis" placeholder="Diagnósticos diferenciales a considerar (DSM-5 / CIE-11)..." rows="3"></textarea>
+          </div>
+        </div>
+        <div class="field-group full">
+          <div class="field">
+            <label>Impresión clínica general</label>
+            <textarea name="impresion_clinica" placeholder="Presentación del consultante, actitud, insight, etc." rows="3"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- SEC 10: Plan -->
+      <div class="section-page" id="sec9">
+        <div class="hint">Establecer el plan de tratamiento recomendado, controles y seguimiento necesarios para el manejo adecuado del caso.</div>
+        <div class="field-group full">
+          <div class="field">
+            <label>Objetivos terapéuticos</label>
+            <textarea name="objetivos" placeholder="Metas a corto, mediano y largo plazo..." rows="3"></textarea>
+          </div>
+        </div>
+        <div class="section-sep">Tratamiento farmacológico</div>
+        <div class="field-group full">
+          <div class="field">
+            <label>Psicofármacos indicados</label>
+            <textarea name="psico_indicados" placeholder="Fármaco — Dosis — Frecuencia — Duración estimada..." rows="3"></textarea>
+          </div>
+        </div>
+        <div class="section-sep">Tratamiento psicoterapéutico</div>
+        <div class="field-group">
+          <div class="field">
+            <label>Modalidad</label>
+            <select name="modalidad_terapia">
+              <option value="">Seleccionar...</option>
+              <option>TCC (Cognitivo-Conductual)</option>
+              <option>Psicoanalítica / Psicodinámica</option>
+              <option>Sistémica</option>
+              <option>EMDR</option>
+              <option>ACT</option>
+              <option>Humanista / Centrada en la persona</option>
+              <option>Mindfulness-Based</option>
+              <option>Otra</option>
+              <option>No indicada en esta etapa</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Frecuencia de sesiones</label>
+            <select name="frecuencia_sesiones">
+              <option value="">Seleccionar...</option>
+              <option>Semanal</option><option>Quincenal</option><option>Mensual</option><option>A definir</option>
+            </select>
+          </div>
+        </div>
+        <div class="section-sep">Seguimiento y controles</div>
+        <div class="field-group">
+          <div class="field">
+            <label>Próxima cita</label>
+            <input type="date" name="proxima_cita">
+          </div>
+          <div class="field">
+            <label>Interconsultas solicitadas</label>
+            <input type="text" name="interconsultas" placeholder="Especialidades a derivar...">
+          </div>
+        </div>
+        <div class="field-group full">
+          <div class="field">
+            <label>Estudios complementarios solicitados</label>
+            <textarea name="estudios" placeholder="Laboratorio, neuroimagen, escalas psicométricas, EEG, etc." rows="2"></textarea>
+          </div>
+        </div>
+        <div class="field-group full">
+          <div class="field">
+            <label>Indicaciones y recomendaciones</label>
+            <textarea name="indicaciones" placeholder="Psicoeducación, hábitos, red de apoyo, medidas de seguridad si corresponde..." rows="3"></textarea>
+          </div>
+        </div>
+        <div class="field-group full">
+          <div class="field">
+            <label>Firma y aclaraciones del profesional</label>
+            <input type="text" name="firma" placeholder="Nombre, matrícula, especialidad, institución">
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+
+    <div class="bottom-bar">
+      <button class="btn-nav" id="btn-prev" onclick="changeSection(-1)" disabled>← Anterior</button>
+      <div class="dots" id="dots"></div>
+      <button class="btn-nav primary" id="btn-next" onclick="changeSection(1)">Siguiente →</button>
+    </div>
+  </main>
+</div>
+
+<!-- ══════ MODAL NUEVO PACIENTE ══════ -->
+<div class="modal-overlay" id="modal-new">
+  <div class="modal">
+    <h3>Nuevo paciente</h3>
+    <div class="field">
+      <label>Nombre completo</label>
+      <input type="text" id="new-nombre" placeholder="Apellido, Nombre" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>Edad</label>
+      <input type="number" id="new-edad" placeholder="años">
+    </div>
+    <div class="field">
+      <label>Fecha de consulta</label>
+      <input type="date" id="new-fecha">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
+      <button class="btn-confirm" onclick="createPatient()">Crear ficha</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ MODAL CONFIRM DELETE ══════ -->
+<div class="modal-overlay" id="modal-del">
+  <div class="modal">
+    <h3>¿Eliminar ficha?</h3>
+    <p style="font-size:15px;color:var(--text-muted);margin-top:8px;line-height:1.6;">Esta acción no se puede deshacer. Se eliminará toda la información del paciente.</p>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeDelModal()">Cancelar</button>
+      <button class="btn-confirm" style="background:var(--danger);" onclick="confirmDelete()">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════
+//  STORAGE
+// ══════════════════════════════════════
+const STORE_KEY = 'hc_patients_v2';
+
+function loadStore() {
+  try { return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; } catch { return {}; }
+}
+
+function saveStore(data) {
+  localStorage.setItem(STORE_KEY, JSON.stringify(data));
+}
+
+function genId() {
+  return 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
+}
+
+// ══════════════════════════════════════
+//  LIST VIEW
+// ══════════════════════════════════════
+function renderList(filter) {
+  const store = loadStore();
+  const list = document.getElementById('patient-list');
+  const q = (filter || '').toLowerCase().trim();
+  const ids = Object.keys(store).filter(id => {
+    if (!q) return true;
+    const n = (store[id].data && store[id].data.nombre || '').toLowerCase();
+    return n.includes(q);
+  });
+
+  list.innerHTML = '';
+
+  if (ids.length === 0) {
+    list.innerHTML = `<div class="empty-state"><div class="icon">📋</div><h3>${q ? 'Sin resultados' : 'Sin pacientes registrados'}</h3><p>${q ? 'Ningún paciente coincide con la búsqueda.' : 'Creá la primera ficha clínica.'}</p></div>`;
+    return;
+  }
+
+  ids.sort((a,b) => {
+    const na = store[a].data && store[a].data.nombre || '';
+    const nb = store[b].data && store[b].data.nombre || '';
+    return na.localeCompare(nb);
+  });
+
+  ids.forEach(id => {
+    const p = store[id];
+    const nombre = p.data && p.data.nombre || 'Sin nombre';
+    const edad = p.data && p.data.edad ? p.data.edad + ' años' : '';
+    const fecha = p.data && p.data.fecha_consulta || p.createdAt || '';
+    const initials = nombre.split(/[\s,]+/).slice(0,2).map(w=>w[0]||'').join('').toUpperCase() || '?';
+    const completadas = p.completedSections ? p.completedSections.length : 0;
+    const pct = Math.round((completadas / 10) * 100);
+
+    const card = document.createElement('div');
+    card.className = 'patient-card';
+    card.onclick = (e) => { if (!e.target.closest('.icon-btn')) openPatient(id); };
+    card.innerHTML = `
+      <div class="card-actions">
+        <button class="icon-btn" title="Eliminar" onclick="askDelete('${id}')">✕</button>
+      </div>
+      <div class="patient-card-header">
+        <div class="avatar">${initials}</div>
+        <div>
+          <div class="patient-card-name">${nombre}</div>
+          <div class="patient-card-sub">${[edad, fecha].filter(Boolean).join(' · ')}</div>
+        </div>
+      </div>
+      <div class="patient-card-meta">
+        <span class="meta-tag">${pct}% completado</span>
+        ${completadas === 10 ? '<span class="meta-tag">Completa</span>' : ''}
+      </div>
+      <div class="card-progress"><div class="card-progress-fill" style="width:${pct}%"></div></div>
+    `;
+    list.appendChild(card);
+  });
+}
+
+function filterPatients() {
+  const q = document.getElementById('search-input').value;
+  renderList(q);
+}
+
+// ══════════════════════════════════════
+//  EDITOR STATE
+// ══════════════════════════════════════
+let currentPatientId = null;
+let currentSection = 0;
+const TOTAL = 10;
+const SECTION_TITLES = [
+  'Motivo de consulta','Datos filiatorios','Antecedentes familiares',
+  'Antecedentes personales','Personalidad premórbida','Adaptación previa',
+  'Antecedentes patológicos','Historia de la condición actual',
+  'Interpretación','Plan de tratamiento'
+];
+
+const ratingGroups = {
+  'r-extro': 'rating_extro',
+  'r-optim': 'rating_optim',
+  'r-auto':  'rating_auto',
+  'r-ae':    'rating_ae',
+  'r-tol':   'rating_tol',
+};
+
+function openPatient(id) {
+  currentPatientId = id;
+  currentSection = 0;
+  showView('view-editor');
+  loadPatientIntoForm(id);
+  gotoSection(0);
+  updateDots();
+  updateProgress();
+}
+
+function goToList() {
+  showView('view-list');
+  renderList(document.getElementById('search-input').value);
+}
+
+function showView(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ══════════════════════════════════════
+//  FORM LOAD / COLLECT
+// ══════════════════════════════════════
+function collectFormData() {
+  const data = {};
+  const content = document.getElementById('content');
+
+  content.querySelectorAll('input[name], select[name], textarea[name]').forEach(el => {
+    if (!el.name) return;
+    if (el.type === 'checkbox') {
+      if (!data[el.name]) data[el.name] = [];
+      if (el.checked) data[el.name].push(el.value);
+    } else {
+      data[el.name] = el.value;
+    }
+  });
+
+  // ratings
+  Object.entries(ratingGroups).forEach(([gId, key]) => {
+    const selected = document.querySelector(`#${gId} .rating-btn.selected`);
+    data[key] = selected ? selected.dataset.v : '';
+  });
+
+  return data;
+}
+
+function loadPatientIntoForm(id) {
+  const store = loadStore();
+  const p = store[id];
+  if (!p || !p.data) return;
+  const data = p.data;
+  const content = document.getElementById('content');
+
+  content.querySelectorAll('input[name], select[name], textarea[name]').forEach(el => {
+    if (!el.name) return;
+    if (el.type === 'checkbox') {
+      const arr = data[el.name] || [];
+      el.checked = arr.includes(el.value);
+      const chip = el.closest('.chip');
+      if (chip) chip.classList.toggle('selected', el.checked);
+    } else {
+      el.value = data[el.name] || '';
+    }
+  });
+
+  // ratings
+  Object.entries(ratingGroups).forEach(([gId, key]) => {
+    document.querySelectorAll(`#${gId} .rating-btn`).forEach(btn => {
+      btn.classList.toggle('selected', btn.dataset.v === data[key]);
+    });
+  });
+
+  // badge
+  const nombre = data.nombre || 'Sin nombre';
+  const edad = data.edad ? data.edad + ' años' : '';
+  document.getElementById('badge-name').textContent = nombre;
+  document.getElementById('badge-age').textContent = edad;
+
+  // completed sections
+  const completed = p.completedSections || [];
+  document.querySelectorAll('.nav-item').forEach((item, i) => {
+    item.classList.toggle('done', completed.includes(i));
+    const num = item.querySelector('.nav-num');
+    if (num) num.textContent = completed.includes(i) ? '✓' : String(i+1).padStart(2,'0');
+  });
+}
+
+// ══════════════════════════════════════
+//  SAVE
+// ══════════════════════════════════════
+let saveTimeout;
+
+function savePatient() {
+  if (!currentPatientId) return;
+  const store = loadStore();
+  const data = collectFormData();
+  if (!store[currentPatientId]) store[currentPatientId] = {};
+  store[currentPatientId].data = data;
+  store[currentPatientId].updatedAt = new Date().toISOString().slice(0,10);
+  saveStore(store);
+  setSaveStatus('saved');
+
+  // update badge
+  const nombre = data.nombre || 'Sin nombre';
+  const edad = data.edad ? data.edad + ' años' : '';
+  document.getElementById('badge-name').textContent = nombre;
+  document.getElementById('badge-age').textContent = edad;
+}
+
+function setSaveStatus(state) {
+  const dot = document.getElementById('save-dot');
+  const lbl = document.getElementById('save-label');
+  if (state === 'saved') { dot.className = 'save-dot saved'; lbl.textContent = 'Guardado'; }
+  else if (state === 'unsaved') { dot.className = 'save-dot unsaved'; lbl.textContent = 'Con cambios'; }
+  else { dot.className = 'save-dot'; lbl.textContent = 'Sin cambios'; }
+}
+
+// Auto-save on input
+document.getElementById('content').addEventListener('input', () => {
+  setSaveStatus('unsaved');
+  clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(savePatient, 1800);
+});
+
+// ══════════════════════════════════════
+//  NAVIGATION
+// ══════════════════════════════════════
+function updateDots() {
+  const container = document.getElementById('dots');
+  container.innerHTML = '';
+  const store = loadStore();
+  const completed = currentPatientId && store[currentPatientId] && store[currentPatientId].completedSections || [];
+  for (let i = 0; i < TOTAL; i++) {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === currentSection ? ' current' : completed.includes(i) ? ' done' : '');
+    container.appendChild(d);
+  }
+}
+
+function updateProgress() {
+  const store = loadStore();
+  const completed = currentPatientId && store[currentPatientId] && store[currentPatientId].completedSections || [];
+  const pct = Math.round((completed.length / TOTAL) * 100);
+  document.getElementById('pct').textContent = pct + '%';
+  document.getElementById('pfill').style.width = pct + '%';
+}
+
+function gotoSection(idx) {
+  savePatient();
+  markCompleted(currentSection);
+
+  document.getElementById('sec' + currentSection).classList.remove('active');
+  document.querySelectorAll('.nav-item')[currentSection].classList.remove('active');
+  currentSection = idx;
+  document.getElementById('sec' + currentSection).classList.add('active');
+  document.querySelectorAll('.nav-item')[currentSection].classList.add('active');
+  document.getElementById('section-title').textContent = SECTION_TITLES[currentSection];
+  document.getElementById('section-pos').textContent = 'Sección ' + (currentSection+1) + ' de ' + TOTAL;
+  document.getElementById('btn-prev').disabled = currentSection === 0;
+  document.getElementById('btn-next').textContent = currentSection === TOTAL-1 ? 'Finalizar ✓' : 'Siguiente →';
+  document.getElementById('content').scrollTop = 0;
+  updateDots();
+  setSaveStatus('saved');
+}
+
+function changeSection(dir) {
+  const next = currentSection + dir;
+  if (next < 0 || next >= TOTAL) return;
+  gotoSection(next);
+}
+
+function markCompleted(idx) {
+  if (!currentPatientId) return;
+  const store = loadStore();
+  if (!store[currentPatientId]) return;
+  if (!store[currentPatientId].completedSections) store[currentPatientId].completedSections = [];
+  if (!store[currentPatientId].completedSections.includes(idx)) {
+    store[currentPatientId].completedSections.push(idx);
+    saveStore(store);
+  }
+  const navItem = document.querySelectorAll('.nav-item')[idx];
+  if (navItem) {
+    navItem.classList.add('done');
+    const num = navItem.querySelector('.nav-num');
+    if (num) num.textContent = '✓';
+  }
+  updateProgress();
+}
+
+// ══════════════════════════════════════
+//  CHIPS & RATINGS
+// ══════════════════════════════════════
+document.querySelectorAll('.chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    chip.classList.toggle('selected');
+    const cb = chip.querySelector('input[type=checkbox]');
+    if (cb) cb.checked = chip.classList.contains('selected');
+  });
+});
+
+function selectRating(btn) {
+  const gId = btn.dataset.g;
+  document.querySelectorAll(`#${gId} .rating-btn`).forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  setSaveStatus('unsaved');
+  clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(savePatient, 1800);
+}
+
+// ══════════════════════════════════════
+//  NEW PATIENT MODAL
+// ══════════════════════════════════════
+function openNewPatient() {
+  document.getElementById('new-nombre').value = '';
+  document.getElementById('new-edad').value = '';
+  document.getElementById('new-fecha').value = new Date().toISOString().slice(0,10);
+  document.getElementById('modal-new').classList.add('open');
+  setTimeout(() => document.getElementById('new-nombre').focus(), 100);
+}
+
+function closeModal() {
+  document.getElementById('modal-new').classList.remove('open');
+}
+
+function createPatient() {
+  const nombre = document.getElementById('new-nombre').value.trim();
+  if (!nombre) { alert('El nombre es obligatorio.'); return; }
+  const edad = document.getElementById('new-edad').value;
+  const fecha = document.getElementById('new-fecha').value;
+  const id = genId();
+  const store = loadStore();
+  store[id] = {
+    createdAt: fecha || new Date().toISOString().slice(0,10),
+    completedSections: [],
+    data: { nombre, edad, fecha_consulta: fecha }
+  };
+  saveStore(store);
+  closeModal();
+  openPatient(id);
+}
+
+// Enter key in modal
+document.getElementById('modal-new').addEventListener('keydown', e => {
+  if (e.key === 'Enter') createPatient();
+});
+
+// ══════════════════════════════════════
+//  DELETE
+// ══════════════════════════════════════
+let deleteTargetId = null;
+
+function askDelete(id) {
+  deleteTargetId = id;
+  document.getElementById('modal-del').classList.add('open');
+}
+
+function closeDelModal() {
+  document.getElementById('modal-del').classList.remove('open');
+  deleteTargetId = null;
+}
+
+function confirmDelete() {
+  if (!deleteTargetId) return;
+  const store = loadStore();
+  delete store[deleteTargetId];
+  saveStore(store);
+  closeDelModal();
+  renderList(document.getElementById('search-input').value);
+}
+
+// ══════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════
+renderList();
+</script>
+</body>
+</html>
